@@ -234,7 +234,7 @@ function Footer() {
     <footer className="bg-blue-500 p-4 b-0">
       <div className="w-full text-center">
         <p className="text-white text-sm">
-          &copy; {new Date().getFullYear()} 2023 Tutorijal
+          &copy; {new Date().getFullYear()} Tutorijal
         </p>
       </div>
     </footer>
@@ -400,3 +400,171 @@ export default Header;
 ```
 
 We added three links, and modified our design a little bit so we get two links, Login and Register to the right side of the header.
+
+## PROTECTING ROUTES
+
+We will use useState() hook to implement auth logic on frontent. We want to achieve that our application doesn't allow opening dashboard if a user is authenticated. If a user is not authenticated we will open Login component.
+
+In our App.js we will create a general auth variable/state that will hold information about authenticated user.
+
+```js
+import Header from './components/header/Header';
+import Footer from './components/footer/Footer';
+import RoutesList from './routes/routesList';
+
+import { useState } from 'react';
+
+function App() {
+  const [auth, setAuth] = useState(false);
+  
+  return (
+    <div className="flex flex-col min-h-screen">
+        <Header auth={auth} setAuth={setAuth} />
+        <RoutesList auth={auth} setAuth={setAuth} />
+        <Footer />
+    </div>
+  );
+}
+
+export default App;
+```
+
+As you may see we used useState hook and created variable auth and setAuth function that is used for setting the state of a variable auth. Initially it is set to false.
+
+Component Header recieves auth and setAuth as props. With that information we render different Header.
+
+```js
+import {Link, useNavigate} from 'react-router-dom';
+
+function Header({auth, setAuth}) {
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    setAuth(false);
+    navigate('/login');
+  };
+
+  return (
+    <header className="bg-blue-500 p-4">
+      <div className="flex flex-row mx-auto">
+        <Link to="/" className="text-white text-2xl font-bold w-full">Napredne tehnike internet programiranja</Link>
+        <div className="flex justify-end font-bold text-white w-full">
+          {!auth ? (
+          <>
+          <Link to="/login" className="mr-2">Login</Link>
+          <Link to="/register">Register</Link>
+          </>) : (
+            <Link to="/logout" onClick={handleLogout} className="mr-2">Logout</Link>
+          )}
+        </div>
+      </div>
+    </header>
+  );
+}
+
+export default Header;
+```
+
+Here we introduce useNavigate hook that takes us to the desired url. Here we render Login and Register link if the user is not authenticated, else it shows Logout that has onClick function handleLogout also defined in this component.
+
+Next in our routesList.js component.
+
+```js
+import { Routes, Route } from 'react-router-dom';
+import Login from '../pages/login/Login'
+import Register from '../pages/register/Register'
+import Dashboard from '../pages/dashboard/Dashboard'
+import Body from '../components/body/Body'
+
+function RoutesList({auth, setAuth}) {
+  
+  return (
+      <Routes>
+      <Route path="/" element={<Body />}>
+        <Route index element={auth ? <Dashboard /> : <Login setAuth={setAuth} />} />
+        <Route path="login" element={<Login setAuth={setAuth} />} />
+        <Route path="logout" element={<Login setAuth={setAuth} />} />
+        <Route path="register" element={<Register />} />
+      </Route>
+      </Routes>
+  );
+}
+
+export default RoutesList;
+```
+
+This component also recieves auth and setAuth and it displays Dashboard if a user is authenticated else it displays Login. Inside a login component we handle the logic for authenticating user.
+
+```js
+import { useNavigate } from 'react-router-dom';
+
+function Login({setAuth}) {
+    const navigate = useNavigate();
+
+    const handleSubmit = (e) => {
+      e.preventDefault();
+      setAuth(true);
+      navigate('/');
+    }
+
+    return (
+      <div className="flex flex-col justify-center items-center p-4 min-w-[600px]">
+        <h1 className="text-2xl">LOGIN</h1>
+        <form onSubmit={handleSubmit} id="login_form" className="w-full">
+          <div className="p-2 flex flex-col">
+            <label className="text-gray-500">Username</label>
+            <input className="border-2 bg-gray-100" name="username" placeholder ="Username" type="text" />
+          </div>
+          <div className="p-2 flex flex-col">
+            <label className="text-gray-500">Password</label>
+            <input className="border-2 bg-gray-100" name="password" placeholder="Password" type="password" />
+          </div>
+          <div className="p-2 flex flex-col">
+            <button type="submit" className="w-full bg-green-500 text-white text-xl p-2">Login</button>
+          </div>
+        </form>
+      </div>
+    );
+  }
+  
+export default Login;
+```
+
+Also we have modified login design. As for the register design it is as follows.
+
+```js
+function Register() {
+    return (
+      <div className="flex flex-col justify-center items-center p-4 min-w-[600px]">
+        <h1 className="text-2xl">REGISTER</h1>
+        <form action="#" method="POST" id="register_form" className="w-full">
+          <div className="p-2 flex flex-col">
+            <label className="text-gray-500">Name</label>
+            <input className="border-2 bg-gray-100" name="username" placeholder ="Username" type="text" />
+          </div>
+          <div className="p-2 flex flex-col">
+            <label className="text-gray-500">Lastname</label>
+            <input className="border-2 bg-gray-100" name="username" placeholder ="Username" type="text" />
+          </div>
+          <div className="p-2 flex flex-col">
+            <label className="text-gray-500">Username</label>
+            <input className="border-2 bg-gray-100" name="username" placeholder ="Username" type="text" />
+          </div>
+          <div className="p-2 flex flex-col">
+            <label className="text-gray-500">Password</label>
+            <input className="border-2 bg-gray-100" name="password" placeholder="Password" type="password" />
+          </div>
+          <div className="p-2 flex flex-col">
+            <label className="text-gray-500">Confirm password</label>
+            <input className="border-2 bg-gray-100" name="confirm_password" placeholder="Password" type="password" />
+          </div>
+          <div className="p-2 flex flex-col">
+            <button type="submit" for="register_form" className="w-full bg-green-500 text-white text-xl p-2">Login</button>
+          </div>
+        </form>
+      </div>
+    )
+  }
+
+  export default Register;
+```
