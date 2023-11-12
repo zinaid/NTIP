@@ -568,3 +568,173 @@ function Register() {
 
   export default Register;
 ```
+
+## LIST, ADD AND EDIT VIEWS
+
+In this part we will create two new pages that lead us to the the "books" and "reservations".
+
+Modify Header.js.
+
+```js
+import {Link, useNavigate} from 'react-router-dom';
+
+function Header({auth, setAuth}) {
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    setAuth(false);
+    navigate('/login');
+  };
+
+  return (
+    <header className="bg-blue-500 p-4">
+      <div className="flex flex-row mx-auto">
+        <Link to="/" className="text-white text-2xl font-bold w-full">NTIP</Link>
+        <div>
+          <Link to="/books" className="text-white w-full mr-2">Knjige</Link>
+          <Link to="/reservations" className="text-white w-full">Rezervacije</Link>
+        </div>
+        <div className="flex justify-end font-bold text-white w-full">
+          {!auth ? (
+          <>
+          <Link to="/login" className="mr-2">Login</Link>
+          <Link to="/register">Register</Link>
+          </>) : (
+            <Link to="/logout" onClick={handleLogout} className="mr-2">Logout</Link>
+          )}
+        </div>
+      </div>
+    </header>
+  );
+}
+
+export default Header;
+```
+
+Add those links to routesList.js and create those pages inside pages folder and name them Books.js and Reservations.js (create subfolder for them also).
+
+```js
+import { Routes, Route } from 'react-router-dom';
+import Login from '../pages/login/Login'
+import Register from '../pages/register/Register'
+import Dashboard from '../pages/dashboard/Dashboard'
+import Reservations from '../pages/reservations/Reservations'
+import Books from '../pages/books/Books'
+import Body from '../components/body/Body'
+
+function RoutesList({auth, setAuth}) {
+  
+  return (
+      <Routes>
+      <Route path="/" element={<Body />}>
+        <Route index element={auth ? <Dashboard /> : <Login setAuth={setAuth} />} />
+        <Route path="login" element={<Login setAuth={setAuth} />} />
+        <Route path="logout" element={<Login setAuth={setAuth} />} />
+        <Route path="register" element={<Register />} />
+        <Route path="books" element={<Books />} />
+        <Route path="reservations" element={<Reservations />} />
+      </Route>
+      </Routes>
+  );
+}
+
+export default RoutesList;
+```
+
+Now we have views for Login, Register, Dashboard, Books and Reservations. Our goal is to render books inside our Books.js component and reservations inside our Reservations.js component. But for the start we will hardcode some examples inside Books.js.
+
+```js
+import Book from './Book'
+
+function Books() {
+    // Dummy data
+    const books = [
+        {
+        id: 1,
+        title: 'Book Title 1',
+        author: 'Author 1',
+        description: 'Description of Book 1...',
+        },
+        {
+        id: 2,
+        title: 'Book Title 2',
+        author: 'Author 2',
+        description: 'Description of Book 2...',
+        },
+    ];
+
+    return (
+        <div className="container mx-auto mt-8">
+        <h1 className="text-3xl font-bold mb-4">Lista knjiga</h1>
+
+        {books.map((book) => (
+            <Book key={book.id} {...book} />
+        ))}
+        </div>
+    );
+}
+  
+export default Books
+```
+
+As you notice inside Books.js we render Book.js component that will showcase one book and we will prop values to here from the array data.
+
+```js
+import React from 'react';
+
+function Book ({ title, author, description }) {
+  return (
+    <div className="bg-gray-200 shadow-md p-4 mb-4 rounded-md">
+      <h2 className="text-xl font-bold mb-2">{title}</h2>
+      <p className="text-gray-600">{author}</p>
+      <p className="mt-2">{description}</p>
+    </div>
+  );
+};
+
+export default Book;
+```
+
+## SERVER
+
+Now that we have our frontend mainly finished (except for the part of data retrievel and form submissions) we will proceed to setup our backend part inside server component. Leave the client folder and enter server folder and initialize project.
+
+```
+npm init -y
+```
+
+Now install express and nodemon (this will restart our server automatically when we change something).
+
+```
+npm install express nodemon
+```
+
+Now inside server folder create server.js file.
+
+```js
+// server/server.js
+const express = require('express');
+const app = express();
+const port = 3001; // Choose any available port
+
+app.use(express.json());
+
+// Start the server
+app.listen(port, () => {
+  console.log(`Server is running on http://localhost:${port}`);
+});
+```
+
+Inside package.json add start scripts
+
+```js
+{
+  "scripts": {
+    "start": "nodemon server.js"
+  }
+}
+```
+
+Now our application is run with a command:
+
+```nodemon server.js```
