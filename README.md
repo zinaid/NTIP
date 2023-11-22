@@ -790,7 +790,103 @@ db.run(`
 db.close();
 ```
 
-This script can be run as ```node db/schemes/bookScheme.js```. This will create a table books with abovementioned columns.
+This script can be run as ```node db/schemes/bookScheme.js```. This will create a table books with abovementioned columns. (TIP: Install sqlite extension for VS code)
 
+Now that we have connection to a db, a db and table books we can go and create our API. We want to introduce MVC model inside our app. Our views are already our frontend app. Now we need to create Model and Controller.
 
+## MVC architecture
 
+Create folders models, controllers and routes. Inside our models we will have interaction with database. Our controller will handle all logic and routes will redirect us to the controllers.
+
+### Routes
+
+Inside our routes we will create books.js file.
+
+```js
+const express = require('express');
+
+const router = express.Router();
+
+router.get('/',  function(req, res) {
+    console.log("Books get");
+});
+
+module.exports = router;
+```
+
+In server.js we will include routes.
+
+```js
+// server/server.js
+const express = require('express');
+const app = express();
+const port = 3001;
+
+const db = require('./db/database');
+const bookRoutes = require('./routes/books');
+
+app.use(express.json());
+
+app.use('/api/books', bookRoutes);
+
+// Start the server
+app.listen(port, () => {
+  console.log(`Server is running on http://localhost:${port}`);
+});
+```
+
+Now we have our first route and if we visit localhost:3001/api/books we will se console.log message in our terminal.
+Next we want to connect our route to our controller. Let's create controller bookController.js.
+
+```js
+const bookController = {
+  getAllBooks: (req, res) => {
+    res.json("SSS");
+  }
+};
+
+module.exports = bookController;
+```
+
+Let us change routes to take us to the bookController.
+
+```js
+const express = require('express');
+const bookController = require('../controllers/bookController');
+
+const router = express.Router();
+
+router.get('/', bookController.getAllBooks);
+
+module.exports = router;
+```
+
+Now if go in browser to the route localhost:3001/api/books we will see a message written.
+
+As for the final part we will connect to the model. Create a file inside folder models named bookModel.js.
+
+```js
+const db = require('../db/database');
+
+class Book {
+  static getAll() {
+    console.log("SSS"); 
+  }
+}
+
+module.exports = Book;
+```
+
+Now we can remove the connection to the database from server.js because our connection is inside our models. Change the controller file bookController.js to use model.
+
+```js
+const Book = require('../models/bookModel');
+
+const bookController = {
+  getAllBooks: (req, res) => {
+    Book.getAll();
+  }
+};
+
+module.exports = bookController;
+```
