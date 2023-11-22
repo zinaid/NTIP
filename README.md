@@ -738,3 +738,59 @@ Inside package.json add start scripts
 Now our application is run with a command:
 
 ```nodemon server.js```
+
+Next we will connect our app to a SQLite database. First install ```npm install sqlite3```. For clarity purposes create folder db where we will add our database connection.
+
+```js
+const sqlite3 = require('sqlite3').verbose();
+
+const db = new sqlite3.Database('books.db', (err) => {
+  if (err) {
+    console.error('Error opening database', err.message);
+  } else {
+    console.log('Connected to the SQLite database.');
+  }
+});
+
+module.exports = db;
+```
+
+Next we will import database connection inside server.js.
+
+```js
+// server/server.js
+const express = require('express');
+const app = express();
+const port = 3001; // Choose any available port
+
+const db = require('./db/database');
+
+app.use(express.json());
+
+// Start the server
+app.listen(port, () => {
+  console.log(`Server is running on http://localhost:${port}`);
+});
+```
+
+Next we will add scripts that we will use for scheme generation (some kind of migrations). Add schemes folder inside db and inside add bookScheme.js.
+
+```js
+const db = require('../database');
+
+db.run(`
+  CREATE TABLE IF NOT EXISTS books (
+    id INTEGER PRIMARY KEY,
+    title TEXT,
+    author TEXT,
+    description TEXT
+  )
+`);
+
+db.close();
+```
+
+This script can be run as ```node db/schemes/bookScheme.js```. This will create a table books with abovementioned columns.
+
+
+
