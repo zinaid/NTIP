@@ -890,3 +890,248 @@ const bookController = {
 
 module.exports = bookController;
 ```
+
+### API
+
+Now we will write our API endpoints. We will write these endpoints:
+
+```
+GET --> books
+GET --> books/{id}
+POST --> books
+PUT --> books/{id}
+DELETE --> books/{id}
+```
+
+Let us modify our routes.
+
+```js
+const express = require('express');
+const bookController = require('../controllers/bookController');
+
+const router = express.Router();
+
+router.get('/', bookController.getAllBooks);
+router.get('/:id', bookController.getBookById);
+router.post('/', bookController.createBook);
+router.put('/:id', bookController.updateBook);
+router.delete('/:id', bookController.deleteBook);
+
+module.exports = router;
+```
+
+Next, let us modify our bookController.js.
+
+```js
+// server/controllers/bookController.js
+const Book = require('../models/bookModel');
+
+const bookController = {
+  getAllBooks: (req, res) => {
+    Book.getAll((err, books) => {
+      if (err) {
+        return res.status(500).json({ error: 'Error fetching books.' });
+      }
+      res.json(books);
+    });
+  },
+
+  getBookById: (req, res) => {
+    const bookId = req.params.id;
+    Book.getById(bookId, (err, book) => {
+      if (err) {
+        return res.status(500).json({ error: 'Error fetching book from the database.' });
+      }
+      if (!book) {
+        return res.status(404).json({ error: 'Book not found' });
+      }
+      res.json(book);
+    });
+  },
+
+  createBook: (req, res) => {
+    const newBook = req.body;
+    Book.create(newBook, (err, createdBook) => {
+      if (err) {
+        return res.status(500).json({ error: 'Error adding book to the database.' });
+      }
+      res.status(201).json(createdBook);
+    });
+  },
+
+  updateBook: (req, res) => {
+    const bookId = req.params.id;
+    const updatedBook = req.body;
+    Book.update(bookId, updatedBook, (err, updated) => {
+      if (err) {
+        return res.status(500).json({ error: 'Error updating book in the database.' });
+      }
+      if (!updated) {
+        return res.status(404).json({ error: 'Book not found' });
+      }
+      res.json(updated);
+    });
+  },
+
+  deleteBook: (req, res) => {
+    const bookId = req.params.id;
+    Book.delete(bookId, (err, deletedBook) => {
+      if (err) {
+        return res.status(500).json({ error: 'Error deleting book from the database.' });
+      }
+      if (!deletedBook) {
+        return res.status(404).json({ error: 'Book not found' });
+      }
+      res.json(deletedBook);
+    });
+  },
+};
+
+module.exports = bookController;
+```
+
+Next modify our bookModel.js that talks with a database.
+
+```js
+// server/models/bookModel.js
+const db = require('../db/database');
+
+class Book {
+  static getAll(callback) {
+    db.all('SELECT * FROM books', callback);
+  }
+
+  static getById(id, callback) {
+    db.get('SELECT * FROM books WHERE id = ?', [id], callback);
+  }
+
+  static create(book, callback) {
+    const { title, author, description } = book;
+    db.run('INSERT INTO books (title, author, description) VALUES (?, ?, ?)', [title, author, description], function (err) {
+      callback(err, { id: this.lastID, title, author, description });
+    });
+  }
+
+  static update(id, updatedBook, callback) {
+    const { title, author, description } = updatedBook;
+    db.run('UPDATE books SET title=?, author=?, description=? WHERE id=?', [title, author, description, id], function (err) {
+      if (err) {
+        return callback(err);
+      }
+      if (this.changes === 0) {
+        // No rows were affected, meaning the book with the given ID was not found
+        return callback(null, null);
+      }
+      // Book updated successfully
+      callback(null, { id, title, author, description });
+    });
+  }
+
+  static delete(id, callback) {
+    db.get('SELECT * FROM books WHERE id = ?', [id], (err, book) => {
+      if (err) {
+        return callback(err);
+      }
+      if (!book) {
+        // Book with the given ID not found
+        return callback(null, null);
+      }
+
+      db.run('DELETE FROM books WHERE id = ?', [id], function (err) {
+        if (err) {
+          return callback(err);
+        }
+        // Book deleted successfully
+        callback(null, { id, title: book.title, author: book.author, description: book.description });
+      });
+    });
+  }
+}
+
+module.exports = Book;
+```
+
+Next we want to document our API with a Swagger. First of all let us install Swagger.
+
+```
+npm install swagger-ui-express swagger-jsdoc --save
+```
+
+Next define a swagger settings file inside server.js.
+
+```js
+const swaggerJsdoc = require('swagger-jsdoc');
+
+const options = {
+  definition: {
+    openapi: '3.0.0',
+    info: {
+      title: 'API Documentation',
+      version: '1.0.0',
+      description: 'Documentation for API',
+    },
+  },
+  apis: ['./routes/*.js'], 
+};
+
+const specs = swaggerJsdoc(options);
+
+module.exports = specs;
+```
+
+Add Swagger to the server.js.
+
+```js
+// server/server.js
+const express = require('express');
+const swaggerUi = require('swagger-ui-express');
+const specs = require('./swagger');
+
+const app = express();
+const port = 3001;
+
+const bookRoutes = require('./routes/books');
+
+app.use(express.json());
+
+app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(specs));
+
+app.use('/api/books', bookRoutes);
+
+// Start the server
+app.listen(port, () => {
+  console.log(`Server is running on http://localhost:${port}`);
+});
+```
+
+Add swagger descriptions to the books.js routes.
+
+```js
+const express = require('express');
+const bookController = require('../controllers/bookController');
+
+const router = express.Router();
+
+/**
+ * @swagger
+ * /api/books:
+ *   get:
+ *     summary: Get all books
+ *     description: Retrieve a list of all books.
+ *     responses:
+ *       '200':
+ *         description: A successful response with the list of books.
+ */
+router.get('/', bookController.getAllBooks);
+
+router.get('/:id', bookController.getBookById);
+router.post('/', bookController.createBook);
+router.put('/:id', bookController.updateBook);
+router.delete('/:id', bookController.deleteBook);
+
+module.exports = router;
+```
+
+Now visiting the link http://localhost:3001/api/docs we will see our API documentation.
+
+Now we have our CRUD with MVC set for the books. Also, we have set Swagger for API documentation. We will integrate our frontend with our backend API.
