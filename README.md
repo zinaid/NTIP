@@ -1135,3 +1135,80 @@ module.exports = router;
 Now visiting the link http://localhost:3001/api/docs we will see our API documentation.
 
 Now we have our CRUD with MVC set for the books. Also, we have set Swagger for API documentation. We will integrate our frontend with our backend API.
+
+## INTEGRATING FRONTEND WITH BOOKS API
+
+Let us go back to the client app, but keep our server run and listening.
+
+Inside our client/src/books/Books.js we will fetch our data from the API endpoint http://localhost/api/books. We can use useEffect hook with a combination of a fetch() function or library like Axios, or React Query. For simplicity we will us fetch().
+
+```js
+import { useState, useEffect } from 'react';
+import Book from './Book'
+
+function Books() {
+    // Dummy data
+    const [books, setBooks] = useState([]);
+    
+    useEffect(() => {
+        // Function to fetch data
+        const fetchData = async () => {
+          try {
+            const response = await fetch('http://localhost:3001/api/books');
+            if (!response.ok) {
+              throw new Error('Failed to fetch data');
+            }
+    
+            const data = await response.json();
+            setBooks(data);
+          } catch (error) {
+            console.error('Error fetching data:', error.message);
+          }
+        };
+    
+        // Call the fetch data function
+        fetchData();
+      }, []); // Empty dependency array means this effect runs once after the initial render>
+
+    return (
+        <div className="container mx-auto mt-8">
+        <h1 className="text-3xl font-bold mb-4">Lista knjiga</h1>
+
+        {books.map((book) => (
+            <Book key={book.id} {...book} />
+        ))}
+        </div>
+    );
+}
+  
+export default Books 
+```
+
+But we encounted CORS problem because our apps are hosted on different urls. We need to install cors library inside server ```npm install cors``` and add cors middleware inside server.js (add it before routes).
+
+```js
+// server/server.js
+const express = require('express');
+const cors = require('cors');
+const swaggerUi = require('swagger-ui-express');
+const specs = require('./swagger');
+
+const app = express();
+const port = 3001;
+
+const bookRoutes = require('./routes/books');
+
+app.use(express.json());
+app.use(cors());
+
+app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(specs));
+
+app.use('/api/books', bookRoutes);
+
+// Start the server
+app.listen(port, () => {
+  console.log(`Server is running on http://localhost:${port}`);
+});
+```
+
+Now we have a fully connected frontend and backend. Next we will create edit, delete and add book frontend and connect it to the backend.

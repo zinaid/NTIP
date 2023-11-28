@@ -1,5 +1,6 @@
 // server/server.js
 const express = require('express');
+const cors = require('cors');
 const swaggerUi = require('swagger-ui-express');
 const specs = require('./swagger');
 
@@ -9,6 +10,7 @@ const port = 3001;
 const bookRoutes = require('./routes/books');
 
 app.use(express.json());
+app.use(cors());
 
 app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(specs));
 
