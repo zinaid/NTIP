@@ -1213,12 +1213,417 @@ app.listen(port, () => {
 
 Now we have a fully connected frontend and backend. Next we will create edit, delete and add book frontend and connect it to the backend.
 
-First let us create delete and edit book. Edit Book.js component:
+Let us start with Add book. Add link and route inside routes.
+
+Inside Books.js:
+
+```js
+import { useState, useEffect } from 'react';
+import {Link} from 'react-router-dom'
+import Book from './Book'
+
+function Books() {
+    const [books, setBooks] = useState([]);
+    
+    useEffect(() => {
+        // Function to fetch data
+        const fetchData = async () => {
+          try {
+            const response = await fetch('http://localhost:3001/api/books');
+            if (!response.ok) {
+              throw new Error('Failed to fetch data');
+            }
+    
+            const data = await response.json();
+            setBooks(data);
+          } catch (error) {
+            console.error('Error fetching data:', error.message);
+          }
+        };
+    
+        // Call the fetch data function
+        fetchData();
+      }, []); // Empty dependency array means this effect runs once after the initial render>
+    
+
+    return (
+        <div className="container mx-auto mt-8">
+          <div className='flex w-full justify-between'>
+            <h1 className="text-3xl font-bold mb-4">Lista knjiga</h1>
+            <Link to="/add-book" className="bg-blue-500 text-white p-2 mb-4">
+              Dodaj knjigu
+            </Link>
+          </div>
+        
+        {books.map((book) => (
+            <Book key={book.id} {...book} />
+        ))}
+        </div>
+    );
+}
+  
+export default Books 
+```
+
+Inside routesList.js
+
+```js
+import { Routes, Route } from 'react-router-dom';
+import Login from '../pages/login/Login'
+import Register from '../pages/register/Register'
+import Dashboard from '../pages/dashboard/Dashboard'
+import Reservations from '../pages/reservations/Reservations'
+import Books from '../pages/books/Books'
+import Body from '../components/body/Body'
+import AddBook from '../pages/books/addBook'
+
+function RoutesList({auth, setAuth}) {
+  
+  return (
+      <Routes>
+      <Route path="/" element={<Body />}>
+        <Route index element={auth ? <Dashboard /> : <Login setAuth={setAuth} />} />
+        <Route path="login" element={<Login setAuth={setAuth} />} />
+        <Route path="logout" element={<Login setAuth={setAuth} />} />
+        <Route path="register" element={<Register />} />
+        <Route path="books" element={<Books />} />
+        <Route path="add-book" element={<AddBook />} />
+        <Route path="reservations" element={<Reservations />} />
+      </Route>
+      </Routes>
+  );
+}
+
+export default RoutesList;
+```
+
+Next create addBook.js file and AddBook.js component inside pages/books.
+
+```js
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+
+function AddBook() {
+  const [newBook, setNewBook] = useState({
+    title: '',
+    author: '',
+    description: '',
+  });
+
+  const navigate = useNavigate();
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    try {
+      // Make a POST request to add the new book
+      const response = await fetch('http://localhost:3001/api/books', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(newBook),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to add the new book');
+      }
+
+      navigate('/books');
+
+    } catch (error) {
+      console.error('Error adding book:', error.message);
+    }
+  };
+
+  return (
+    <div className="container mx-auto mt-8">
+      <h1 className="text-3xl font-bold mb-4">Dodaj knjigu</h1>
+
+      <form onSubmit={handleSubmit} className='flex flex-col p-4'>
+        <label>Naslov:</label>
+        <input
+          type="text"
+          name="title"
+          value={newBook.title}
+          onChange={(e) => setNewBook({ ...newBook, title: e.target.value })}
+          required
+          className="border p-2 mb-2"
+        />
+
+        <label>Autor:</label>
+        <input
+          type="text"
+          name="author"
+          value={newBook.author}
+          onChange={(e) => setNewBook({ ...newBook, author: e.target.value })}
+          required
+          className="border p-2 mb-2"
+        />
+
+        <label>Opis:</label>
+        <textarea
+          name="description"
+          value={newBook.description}
+          onChange={(e) => setNewBook({ ...newBook, description: e.target.value })}
+          required
+          className="border p-2 mb-4"
+        />
+
+        <button type="submit" className="bg-green-500 text-white p-2">
+          Dodaj
+        </button>
+      </form>
+    </div>
+  );
+}
+
+export default AddBook;
+```
+
+After creating AddBook component we will continue and add Edit logic to our component. Modify Book.js
 
 ```js
 import React from 'react';
+import {Link} from 'react-router-dom'
 
-function Book ({ id, title, author, description, onDelete, onEdit }) {
+function Book ({ id, title, author, description }) {
+  return (
+    <div className="flex flex-inline bg-gray-200 shadow-md p-4 mb-4 rounded-md">
+      <div>
+        <h2 className="text-xl font-bold mb-2">{title}</h2>
+        <p className="text-gray-600">{author}</p>
+        <p className="mt-2">{description}</p>
+      </div>
+      <div className='flex w-full justify-end items-center'>
+        <Link to={`/edit-book/${id}`}  className='bg-blue-800 rounded-md mr-2 p-4'>
+          Edit
+        </Link>
+      </div> 
+    </div>
+  );
+};
+
+export default Book;
+```
+
+Create a new component EditBook.js inside a file editBook.js that is inside pages/books.
+
+```js
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+
+function EditBook() {
+  const { id } = useParams();
+
+  const [editedBook, setEditedBook] = useState({
+    title: '',
+    author: '',
+    description: '',
+  });
+
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    // Fetch the book data based on the ID
+    const fetchData = async () => {
+      try {
+        const response = await fetch(`http://localhost:3001/api/books/${id}`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch book data');
+        }
+
+        const data = await response.json();
+        setEditedBook(data);
+      } catch (error) {
+        console.error('Error fetching book data:', error.message);
+      }
+    };
+
+    // Call the fetch data function
+    fetchData();
+  }, [id]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    try {
+      // Make a PUT request to update the book
+      const response = await fetch(`http://localhost:3001/api/books/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(editedBook),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update the book');
+      }
+
+      // Redirect to the home page after updating the book
+      navigate('/books');
+    } catch (error) {
+      console.error('Error updating book:', error.message);
+    }
+  };
+
+  return (
+    <div className="container mx-auto mt-8">
+      <h1 className="text-3xl font-bold mb-4">Uredi knjigu {id}</h1>
+
+      <form onSubmit={handleSubmit} className='flex flex-col p-4'>
+        <label>Title:</label>
+        <input
+          type="text"
+          name="title"
+          value={editedBook.title}
+          onChange={(e) => setEditedBook({ ...editedBook, title: e.target.value })}
+          required
+          className="border p-2 mb-2"
+        />
+
+        <label>Author:</label>
+        <input
+          type="text"
+          name="author"
+          value={editedBook.author}
+          onChange={(e) => setEditedBook({ ...editedBook, author: e.target.value })}
+          required
+          className="border p-2 mb-2"
+        />
+
+        <label>Description:</label>
+        <textarea
+          name="description"
+          value={editedBook.description}
+          onChange={(e) => setEditedBook({ ...editedBook, description: e.target.value })}
+          required
+          className="border p-2 mb-4"
+        />
+
+        <button type="submit" className="bg-blue-500 text-white p-2">
+          Spremi
+        </button>
+      </form>
+    </div>
+  );
+}
+
+export default EditBook;
+```
+
+Of course we need to add edit route inside routesList.js.
+
+```js
+import { Routes, Route } from 'react-router-dom';
+import Login from '../pages/login/Login'
+import Register from '../pages/register/Register'
+import Dashboard from '../pages/dashboard/Dashboard'
+import Reservations from '../pages/reservations/Reservations'
+import Books from '../pages/books/Books'
+import Body from '../components/body/Body'
+import AddBook from '../pages/books/addBook'
+import EditBook from '../pages/books/editBook'
+
+function RoutesList({auth, setAuth}) {
+  
+  return (
+      <Routes>
+      <Route path="/" element={<Body />}>
+        <Route index element={auth ? <Dashboard /> : <Login setAuth={setAuth} />} />
+        <Route path="login" element={<Login setAuth={setAuth} />} />
+        <Route path="logout" element={<Login setAuth={setAuth} />} />
+        <Route path="register" element={<Register />} />
+        <Route path="books" element={<Books />} />
+        <Route path="add-book" element={<AddBook />} />
+        <Route path="edit-book/:id" element={<EditBook />} />
+        <Route path="reservations" element={<Reservations />} />
+      </Route>
+      </Routes>
+  );
+}
+
+export default RoutesList;
+```
+
+Next, we move to the delete option. Modify Books.js and add onDelete() handling and prop it to the Book.js component.
+
+Books.js
+
+```js
+import { useState, useEffect } from 'react';
+import {Link} from 'react-router-dom'
+import Book from './Book'
+
+function Books() {
+    const [books, setBooks] = useState([]);
+    
+    useEffect(() => {
+        // Function to fetch data
+        const fetchData = async () => {
+          try {
+            const response = await fetch('http://localhost:3001/api/books');
+            if (!response.ok) {
+              throw new Error('Failed to fetch data');
+            }
+    
+            const data = await response.json();
+            setBooks(data);
+          } catch (error) {
+            console.error('Error fetching data:', error.message);
+          }
+        };
+    
+        // Call the fetch data function
+        fetchData();
+      }, []); // Empty dependency array means this effect runs once after the initial render>
+
+      const handleDelete = async (id) => {
+        try {
+          // Make a DELETE request to the API
+          const response = await fetch(`http://localhost:3001/api/books/${id}`, {
+            method: 'DELETE',
+          });
+    
+          if (!response.ok) {
+            throw new Error('Failed to delete the book');
+          }
+    
+          // Update the local state without the deleted book
+          setBooks((prevBooks) => prevBooks.filter((book) => book.id !== id));
+        } catch (error) {
+          console.error('Error deleting book:', error.message);
+        }
+      };
+    
+
+    return (
+        <div className="container mx-auto mt-8">
+          <div className='flex w-full justify-between'>
+            <h1 className="text-3xl font-bold mb-4">Lista knjiga</h1>
+            <Link to="/add-book" className="bg-blue-500 text-white p-2 mb-4">
+              Dodaj knjigu
+            </Link>
+          </div>
+        
+        {books.map((book) => (
+            <Book key={book.id} {...book} onDelete={handleDelete}/>
+        ))}
+        </div>
+    );
+}
+  
+export default Books 
+```
+
+Book.js component looks like this.
+
+```js
+import React from 'react';
+import {Link} from 'react-router-dom'
+
+function Book ({ id, title, author, description, onDelete }) {
   return (
     <div className="flex flex-inline bg-gray-200 shadow-md p-4 mb-4 rounded-md">
       <div>
@@ -1228,7 +1633,9 @@ function Book ({ id, title, author, description, onDelete, onEdit }) {
       </div>
       <div className='flex w-full justify-end items-center'>
         <button className='bg-red-800 rounded-md mr-2 p-4' onClick={() => onDelete(id)}>Delete</button>
-        <button className='bg-green-800 rounded-md p-4' onClick={() => onEdit(id)}>Edit</button>
+        <Link to={`/edit-book/${id}`}  className='bg-blue-800 rounded-md mr-2 p-4'>
+          Edit
+        </Link>
       </div> 
     </div>
   );
@@ -1237,15 +1644,12 @@ function Book ({ id, title, author, description, onDelete, onEdit }) {
 export default Book;
 ```
 
-Now we will continue, and improve our app with Add and Edit options.
+Now we have a fully functional CRUD system frontend connected with our Backend API.
 
-TO DO:
+Next steps:
 
-```
-Finish CRUD
-Add reservations table with FK and display them on reservations page
-Add Jest for testing
+Add reservations -> FK and combining tables
+Finish auth, login and register and protect all of our routes
 Dockerize App
+Add tests
 Deploy App
-Add CI/CD
-```

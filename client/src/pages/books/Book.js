@@ -1,6 +1,7 @@
 import React from 'react';
+import {Link} from 'react-router-dom'
 
-function Book ({ id, title, author, description, onDelete, onEdit }) {
+function Book ({ id, title, author, description, onDelete }) {
   return (
     <div className="flex flex-inline bg-gray-200 shadow-md p-4 mb-4 rounded-md">
       <div>
@@ -10,7 +11,9 @@ function Book ({ id, title, author, description, onDelete, onEdit }) {
       </div>
       <div className='flex w-full justify-end items-center'>
         <button className='bg-red-800 rounded-md mr-2 p-4' onClick={() => onDelete(id)}>Delete</button>
-        <button className='bg-green-800 rounded-md p-4' onClick={() => onEdit(id)}>Edit</button>
+        <Link to={`/edit-book/${id}`}  className='bg-blue-800 rounded-md mr-2 p-4'>
+          Edit
+        </Link>
       </div> 
     </div>
   );

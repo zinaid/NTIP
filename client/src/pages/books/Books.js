@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
+import {Link} from 'react-router-dom'
 import Book from './Book'
 
 function Books() {
-    // Dummy data
     const [books, setBooks] = useState([]);
     
     useEffect(() => {
@@ -43,17 +43,18 @@ function Books() {
         }
       };
     
-      const handleEdit = (id) => {
-        
-      };
-    
 
     return (
         <div className="container mx-auto mt-8">
-        <h1 className="text-3xl font-bold mb-4">Lista knjiga</h1>
-
+          <div className='flex w-full justify-between'>
+            <h1 className="text-3xl font-bold mb-4">Lista knjiga</h1>
+            <Link to="/add-book" className="bg-blue-500 text-white p-2 mb-4">
+              Dodaj knjigu
+            </Link>
+          </div>
+        
         {books.map((book) => (
-            <Book key={book.id} {...book} onDelete={handleDelete} onEdit={handleEdit} />
+            <Book key={book.id} {...book} onDelete={handleDelete}/>
         ))}
         </div>
     );
