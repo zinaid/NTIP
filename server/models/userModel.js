@@ -2,7 +2,7 @@ const db = require('../db/database');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
-const SECRET_KEY = 'your-secret-key'; // Replace with a strong, secret key
+const { SECRET_KEY } = require('../config'); // Your secret key
 
 class User {
 

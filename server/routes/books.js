@@ -1,7 +1,10 @@
 const express = require('express');
+const authenticateToken = require('../middlewares/authMiddleware');
 const bookController = require('../controllers/bookController');
 
 const router = express.Router();
+
+router.use(authenticateToken); // Apply middleware to all routes below this line
 
 /**
  * @swagger
