@@ -1646,10 +1646,299 @@ export default Book;
 
 Now we have a fully functional CRUD system frontend connected with our Backend API.
 
-Next steps:
+### AUTH
 
-Add reservations -> FK and combining tables
-Finish auth, login and register and protect all of our routes
-Dockerize App
-Add tests
-Deploy App
+Now we will finish our auth system and build backend around it. We will start with backend and MVC.
+
+First we will create models/userModel.js. First install ```npm install bcryptjs```.
+
+```js
+// models/User.js
+const db = require('../db/database');
+const bcrypt = require('bcryptjs');
+
+class User {
+  static register(user, callback) {
+    const { username, password } = user;
+
+    // Hash the password
+    bcrypt.hash(password, 10, (err, hashedPassword) => {
+      if (err) {
+        return callback(err);
+      }
+
+      // Save the user with hashed password to the database
+      db.run('INSERT INTO users (username, password) VALUES (?, ?)', [username, hashedPassword], function (err) {
+        callback(err, { id: this.lastID, username });
+      });
+    });
+  }
+
+  static login(username, password, callback) {
+    db.get('SELECT * FROM users WHERE username = ?', [username], (err, user) => {
+      if (err) {
+        return callback(err);
+      }
+      if (!user) {
+        return callback(null, null); // User not found
+      }
+
+      // Compare the provided password with the stored hashed password
+      bcrypt.compare(password, user.password, (err, match) => {
+        if (err) {
+          return callback(err);
+        }
+        if (!match) {
+          return callback(null, null); // Incorrect password
+        }
+
+        // Passwords match, return the user
+        callback(null, user);
+      });
+    });
+  }
+
+  static getById(id, callback) {
+    db.get('SELECT id, username FROM users WHERE id = ?', [id], callback);
+  }
+}
+
+module.exports = User;
+```
+
+Now we will create controller inside controller named authController.js.
+
+```js
+// controllers/authController.js
+const User = require('../models/userModel');
+
+const authController = {
+  register: (req, res) => {
+    const newUser = req.body;
+    User.register(newUser, (err, createdUser) => {
+      if (err) {
+        return res.status(500).json({ error: 'Error registering user.' });
+      }
+      res.status(201).json(createdUser);
+    });
+  },
+
+  login: (req, res) => {
+    const { username, password } = req.body;
+    User.login(username, password, (err, user) => {
+      if (err) {
+        return res.status(500).json({ error: 'Error logging in.' });
+      }
+      if (!user) {
+        return res.status(401).json({ error: 'Invalid credentials.' });
+      }
+
+      // Return a token or other authentication information
+      res.json({ user });
+    });
+  },
+};
+
+module.exports = authController;
+```
+
+Then we will create routes for auth inside routes named auth.js.
+
+```js
+// routes/auth.js
+const express = require('express');
+const { register, login } = require('../controllers/authController');
+
+const router = express.Router();
+
+router.post('/register', register);
+router.post('/login', login);
+
+module.exports = router;
+```
+
+And finally we will include our routes inside server.js.
+
+```js
+// server/server.js
+const express = require('express');
+const cors = require('cors');
+const swaggerUi = require('swagger-ui-express');
+const specs = require('./swagger');
+
+const app = express();
+const port = 3001;
+
+const bookRoutes = require('./routes/books');
+
+....
+```
+
+We will also add a migration for our table inside schemes named userScheme.js.
+
+```js
+const db = require('../database');
+
+db.run(`
+  CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY,
+    username TEXT UNIQUE,
+    password TEXT
+  )
+`);
+
+db.close();
+```
+
+We run migration as ```node db/schemes/userScheme.js```. Now we have our table users. We want to use JWT token for authentication so we need to install library ```npm install jsonwebtoken```.
+
+Create config.js in root for storing our security key.
+
+```js
+// config.js
+module.exports = {
+    SECRET_KEY: 'your-secret-key', // Replace with your actual secret key
+  };
+```
+
+We will modify our userModel.js and add logic for jwt token.
+
+```js
+const db = require('../db/database');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+
+const { SECRET_KEY } = require('../config'); // Your secret key
+
+class User {
+
+    // Helper method to generate a JWT token
+    static generateToken(user) {
+    return jwt.sign({ id: user.id, username: user.username }, SECRET_KEY, { expiresIn: '1h' });
+    }
+
+    static register(user, callback) {
+    const { username, password } = user;
+
+    bcrypt.hash(password, 10, (err, hashedPassword) => {
+        if (err) {
+        return callback(err);
+        }
+
+        // Use an arrow function to ensure the correct 'this' context
+        db.run('INSERT INTO users (username, password) VALUES (?, ?)', [username, hashedPassword], (err) => {
+        if (err) {
+            return callback(err);
+        }
+
+        // Generate and return the JWT token after registration
+        const token = this.generateToken({ id: this.lastID, username });
+        callback(null, { id: this.lastID, username, token });
+        });
+    });
+    }
+
+    static login(username, password, callback) {
+        db.get('SELECT * FROM users WHERE username = ?', [username], (err, user) => {
+        if (err) {
+            return callback(err);
+        }
+        if (!user) {
+            return callback(null, null); // User not found
+        }
+
+        bcrypt.compare(password, user.password, (err, match) => {
+            if (err) {
+            return callback(err);
+            }
+            if (!match) {
+            return callback(null, null); // Incorrect password
+            }
+
+            // Passwords match, generate and return the JWT token
+            const token = this.generateToken(user);
+            callback(null, { id: user.id, username, token });
+        });
+        });
+    }
+
+    static getById(id, callback) {
+        db.get('SELECT id, username FROM users WHERE id = ?', [id], callback);
+    }
+
+    // Helper method to verify and decode a JWT token
+    static verifyToken(token) {
+        try {
+        const decoded = jwt.verify(token, SECRET_KEY);
+        return decoded;
+        } catch (error) {
+        return null; // Token is invalid
+        }
+    }
+}
+
+module.exports = User;
+```
+
+We will now create a middleware to protect our books routes also. So create a folder named middlewares.
+
+```js
+// middleware/authMiddleware.js
+const jwt = require('jsonwebtoken');
+const { SECRET_KEY } = require('../config'); // Your secret key
+
+function authenticateToken(req, res, next) {
+  const token = req.headers['authorization'];
+
+  if (!token) {
+    return res.status(401).json({ error: 'Unauthorized: Missing token' });
+  }
+
+  jwt.verify(token, SECRET_KEY, (err, user) => {
+    if (err) {
+      return res.status(403).json({ error: 'Forbidden: Invalid token' });
+    }
+
+    req.user = user; // Attach the user information to the request object
+    next();
+  });
+}
+
+module.exports = authenticateToken;
+```
+
+Add middlware to auth routes.
+
+```js
+const express = require('express');
+const authenticateToken = require('../middlewares/authMiddleware');
+const bookController = require('../controllers/bookController');
+
+const router = express.Router();
+
+router.use(authenticateToken); // Apply middleware to all routes below this line
+
+/**
+ * @swagger
+ * /api/books:
+ *   get:
+ *     summary: Get all books
+ *     description: Retrieve a list of all books.
+ *     responses:
+ *       '200':
+ *         description: A successful response with the list of books.
+ */
+router.get('/', bookController.getAllBooks);
+
+router.get('/:id', bookController.getBookById);
+router.post('/', bookController.createBook);
+router.put('/:id', bookController.updateBook);
+router.delete('/:id', bookController.deleteBook);
+
+module.exports = router;
+```
+
+Now our routes can't be accessed without Authorization in header with a jwt token.
+
+Next we will modify our frontend to work with our auth backend and finally provide a full login, register logic on frontend. let us start with register.
+
