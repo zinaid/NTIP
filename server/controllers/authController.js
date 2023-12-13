@@ -4,6 +4,7 @@ const User = require('../models/userModel');
 const authController = {
   register: (req, res) => {
     const newUser = req.body;
+    
     User.register(newUser, (err, createdUser) => {
       if (err) {
         return res.status(500).json({ error: 'Error registering user.' });

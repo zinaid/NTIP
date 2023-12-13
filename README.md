@@ -1653,57 +1653,80 @@ Now we will finish our auth system and build backend around it. We will start wi
 First we will create models/userModel.js. First install ```npm install bcryptjs```.
 
 ```js
-// models/User.js
 const db = require('../db/database');
 const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+
+const { SECRET_KEY } = require('../config'); // Your secret key
+
+ // Helper method to generate a JWT token
+function generateToken(user) {
+    return jwt.sign({ id: user.id, username: user.username }, SECRET_KEY, { expiresIn: '1h' });
+}
 
 class User {
-  static register(user, callback) {
-    const { username, password } = user;
-
-    // Hash the password
-    bcrypt.hash(password, 10, (err, hashedPassword) => {
-      if (err) {
-        return callback(err);
+    static register(user, callback) {
+        const { username, password } = user;
+      
+        bcrypt.hash(password, 10, (err, hashedPassword) => {
+          if (err) {
+            return callback(err);
+          }
+      
+          // Use an arrow function to ensure the correct 'this' context
+          db.run('INSERT INTO users (username, password) VALUES (?, ?)', [username, hashedPassword], function (err) {
+            if (err) {
+              return callback(err);
+            }
+      
+            // Generate and return the JWT token after registration
+            const token = generateToken({ id: this.lastID, username });
+            callback(null, { id: this.lastID, username, token });
+          });
+        });
       }
 
-      // Save the user with hashed password to the database
-      db.run('INSERT INTO users (username, password) VALUES (?, ?)', [username, hashedPassword], function (err) {
-        callback(err, { id: this.lastID, username });
-      });
-    });
-  }
-
-  static login(username, password, callback) {
-    db.get('SELECT * FROM users WHERE username = ?', [username], (err, user) => {
-      if (err) {
-        return callback(err);
-      }
-      if (!user) {
-        return callback(null, null); // User not found
-      }
-
-      // Compare the provided password with the stored hashed password
-      bcrypt.compare(password, user.password, (err, match) => {
+    static login(username, password, callback) {
+        db.get('SELECT * FROM users WHERE username = ?', [username], (err, user) => {
         if (err) {
-          return callback(err);
+            return callback(err);
         }
-        if (!match) {
-          return callback(null, null); // Incorrect password
+        if (!user) {
+            return callback(null, null); // User not found
         }
 
-        // Passwords match, return the user
-        callback(null, user);
-      });
-    });
-  }
+        bcrypt.compare(password, user.password, (err, match) => {
+            if (err) {
+            return callback(err);
+            }
+            if (!match) {
+            return callback(null, null); // Incorrect password
+            }
 
-  static getById(id, callback) {
-    db.get('SELECT id, username FROM users WHERE id = ?', [id], callback);
-  }
+            // Passwords match, generate and return the JWT token
+            const token = this.generateToken(user);
+            callback(null, { id: user.id, username, token });
+        });
+        });
+    }
+
+    static getById(id, callback) {
+        db.get('SELECT id, username FROM users WHERE id = ?', [id], callback);
+    }
+
+    // Helper method to verify and decode a JWT token
+    static verifyToken(token) {
+        try {
+        const decoded = jwt.verify(token, SECRET_KEY);
+        return decoded;
+        } catch (error) {
+        return null; // Token is invalid
+        }
+    }
 }
 
 module.exports = User;
+
 ```
 
 Now we will create controller inside controller named authController.js.
@@ -1715,6 +1738,7 @@ const User = require('../models/userModel');
 const authController = {
   register: (req, res) => {
     const newUser = req.body;
+    
     User.register(newUser, (err, createdUser) => {
       if (err) {
         return res.status(500).json({ error: 'Error registering user.' });
@@ -1941,4 +1965,87 @@ module.exports = router;
 Now our routes can't be accessed without Authorization in header with a jwt token.
 
 Next we will modify our frontend to work with our auth backend and finally provide a full login, register logic on frontend. let us start with register.
+
+```js
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+
+function Register() {
+
+    const [formData, setFormData] = useState({
+      username: '',
+      password: '',
+      confirm_password: '',
+    });
+
+    const navigate = useNavigate();
+
+    const handleSubmit = async (e) => {
+      e.preventDefault();
+  
+      try {
+        // Make a POST request to register the user
+        const response = await fetch('http://localhost:3001/api/auth/register', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(formData),
+        });
+  
+        if (!response.ok) {
+          throw new Error('Failed to register user');
+        }
+
+        navigate('/books');
+        
+      } catch (error) {
+        console.error('Error registering user:', error.message);
+      }
+    };
+
+    return (
+      <div className="flex flex-col justify-center items-center p-4 min-w-[600px]">
+        <h1 className="text-2xl">REGISTER</h1>
+        <form onSubmit={handleSubmit} id="register_form" className="w-full">
+          <div className="p-2 flex flex-col">
+            <label className="text-gray-500">Username</label>
+            <input className="border-2 bg-gray-100" 
+                  name="username" 
+                  placeholder ="Username" 
+                  type="text"
+                  value={formData.username}
+                  onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+            />
+          </div>
+          <div className="p-2 flex flex-col">
+            <label className="text-gray-500">Password</label>
+            <input className="border-2 bg-gray-100" 
+                  name="password" 
+                  placeholder="Password" 
+                  type="password"
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+            />
+          </div>
+          <div className="p-2 flex flex-col">
+            <label className="text-gray-500">Confirm password</label>
+            <input className="border-2 bg-gray-100" 
+                  name="confirm_password" 
+                  placeholder="Password" 
+                  type="password" 
+                  value={formData.confirm_password}
+                  onChange={(e) => setFormData({ ...formData, confirm_password: e.target.value })}
+            />
+          </div>
+          <div className="p-2 flex flex-col">
+            <button type="submit" for="register_form" className="w-full bg-green-500 text-white text-xl p-2">Register</button>
+          </div>
+        </form>
+      </div>
+    )
+  }
+
+  export default Register;
+```
 

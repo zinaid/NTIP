@@ -4,33 +4,32 @@ const jwt = require('jsonwebtoken');
 
 const { SECRET_KEY } = require('../config'); // Your secret key
 
-class User {
-
-    // Helper method to generate a JWT token
-    static generateToken(user) {
+ // Helper method to generate a JWT token
+function generateToken(user) {
     return jwt.sign({ id: user.id, username: user.username }, SECRET_KEY, { expiresIn: '1h' });
-    }
+}
 
+class User {
     static register(user, callback) {
-    const { username, password } = user;
-
-    bcrypt.hash(password, 10, (err, hashedPassword) => {
-        if (err) {
-        return callback(err);
-        }
-
-        // Use an arrow function to ensure the correct 'this' context
-        db.run('INSERT INTO users (username, password) VALUES (?, ?)', [username, hashedPassword], (err) => {
-        if (err) {
+        const { username, password } = user;
+      
+        bcrypt.hash(password, 10, (err, hashedPassword) => {
+          if (err) {
             return callback(err);
-        }
-
-        // Generate and return the JWT token after registration
-        const token = this.generateToken({ id: this.lastID, username });
-        callback(null, { id: this.lastID, username, token });
+          }
+      
+          // Use an arrow function to ensure the correct 'this' context
+          db.run('INSERT INTO users (username, password) VALUES (?, ?)', [username, hashedPassword], function (err) {
+            if (err) {
+              return callback(err);
+            }
+      
+            // Generate and return the JWT token after registration
+            const token = generateToken({ id: this.lastID, username });
+            callback(null, { id: this.lastID, username, token });
+          });
         });
-    });
-    }
+      }
 
     static login(username, password, callback) {
         db.get('SELECT * FROM users WHERE username = ?', [username], (err, user) => {
