@@ -8,6 +8,6 @@ const router = express.Router();
 router.use(authenticateToken); // Apply middleware to all reservation routes
 
 router.get('/', reservationController.getAllReservations);
-router.post('/make-reservation', reservationController.makeReservation);
+router.post('/', reservationController.makeReservation);
 
 module.exports = router;

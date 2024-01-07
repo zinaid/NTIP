@@ -2583,7 +2583,7 @@ module.exports = Reservation;
 Next create controller for reservations.
 
 ```js
-const Reservation = require('../models/Reservation');
+const Reservation = require('../models/reservationModel');
 
 const reservationController = {
   getAllReservations: (req, res) => {
@@ -2596,8 +2596,8 @@ const reservationController = {
   },
 
   makeReservation: (req, res) => {
-    const { userId, bookId } = req.body;
-
+    const { bookId } = req.body;
+    userId = req.user.id;
     Reservation.makeReservation(userId, bookId, (err) => {
       if (err) {
         return res.status(500).json({ error: 'Error making reservation.' });
@@ -2623,9 +2623,154 @@ const router = express.Router();
 router.use(authenticateToken); // Apply middleware to all reservation routes
 
 router.get('/', reservationController.getAllReservations);
-router.post('/make-reservation', reservationController.makeReservation);
+router.post('/', reservationController.makeReservation);
 
 module.exports = router;
 ```
 
+Don't forget to add routes inside server.js.
+
+```js
+// server/server.js
+const express = require('express');
+const cors = require('cors');
+const swaggerUi = require('swagger-ui-express');
+const specs = require('./swagger');
+
+const app = express();
+const port = 3001;
+
+const bookRoutes = require('./routes/books');
+const reservationRoutes = require('./routes/reservations');
+const authRoutes = require('./routes/auth');
+
+app.use(express.json());
+app.use(cors());
+
+app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(specs));
+
+app.use('/api/books', bookRoutes);
+app.use('/api/reservations', reservationRoutes);
+app.use('/api/auth', authRoutes);
+
+// Start the server
+app.listen(port, () => {
+  console.log(`Server is running on http://localhost:${port}`);
+});
+```
+
 Run migration with a command node/db/schemes/reservationScheme.js from server folder. Now we will continue to add frontend for creating our reservations and printing them.
+
+We start with list of reservations.
+
+```js
+import React, { useState, useEffect } from 'react';
+import Cookies from 'js-cookie';
+import {Link} from 'react-router-dom'
+
+function Reservations() {
+  const [reservations, setReservations] = useState([]);
+
+  useEffect(() => {
+    // Function to fetch reservations
+    const fetchReservations = async () => {
+      try {
+        const authToken = Cookies.get('authData');
+        const response = await fetch('http://localhost:3001/api/reservations', {
+          headers: {
+            Authorization: `${authToken}`, // Include the authorization token in the headers
+          }
+        });
+        if (!response.ok) {
+          throw new Error('Failed to fetch reservations');
+        }
+
+        const data = await response.json();
+        setReservations(data);
+      } catch (error) {
+        console.error('Error fetching reservations:', error.message);
+      }
+    };
+
+    // Call the fetch reservations function
+    fetchReservations();
+  }, []); // Empty dependency array means this effect runs once after the initial render
+
+  return (
+    <div className="container mx-auto mt-8">
+      <div className='flex w-full justify-between'>
+        <h1 className="text-3xl font-bold mb-4">Lista rezervacija</h1>
+        <Link to="/add-reservation" className="bg-blue-500 text-white p-2 mb-4">
+          Dodaj rezervaciju
+        </Link>
+      </div>
+      <ul>
+        {reservations.map((reservation) => (
+          <li key={reservation.id}>
+            User ID: {reservation.user_id}, Book ID: {reservation.book_id}, Date: {reservation.reservation_date}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+export default Reservations;
+```
+
+This is our add reservation.
+
+```js
+import React, { useState, useEffect } from 'react';
+import Cookies from 'js-cookie';
+import {Link} from 'react-router-dom'
+
+function Reservations() {
+  const [reservations, setReservations] = useState([]);
+
+  useEffect(() => {
+    // Function to fetch reservations
+    const fetchReservations = async () => {
+      try {
+        const authToken = Cookies.get('authData');
+        const response = await fetch('http://localhost:3001/api/reservations', {
+          headers: {
+            Authorization: `${authToken}`, // Include the authorization token in the headers
+          }
+        });
+        if (!response.ok) {
+          throw new Error('Failed to fetch reservations');
+        }
+
+        const data = await response.json();
+        setReservations(data);
+      } catch (error) {
+        console.error('Error fetching reservations:', error.message);
+      }
+    };
+
+    // Call the fetch reservations function
+    fetchReservations();
+  }, []); // Empty dependency array means this effect runs once after the initial render
+
+  return (
+    <div className="container mx-auto mt-8">
+      <div className='flex w-full justify-between'>
+        <h1 className="text-3xl font-bold mb-4">Lista rezervacija</h1>
+        <Link to="/add-reservation" className="bg-blue-500 text-white p-2 mb-4">
+          Dodaj rezervaciju
+        </Link>
+      </div>
+      <ul>
+        {reservations.map((reservation) => (
+          <li key={reservation.id}>
+            User ID: {reservation.user_id}, Book ID: {reservation.book_id}, Date: {reservation.reservation_date}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+export default Reservations;
+```

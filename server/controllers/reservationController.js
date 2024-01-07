@@ -1,4 +1,4 @@
-const Reservation = require('../models/Reservation');
+const Reservation = require('../models/reservationModel');
 
 const reservationController = {
   getAllReservations: (req, res) => {
@@ -11,8 +11,8 @@ const reservationController = {
   },
 
   makeReservation: (req, res) => {
-    const { userId, bookId } = req.body;
-
+    const { bookId } = req.body;
+    userId = req.user.id;
     Reservation.makeReservation(userId, bookId, (err) => {
       if (err) {
         return res.status(500).json({ error: 'Error making reservation.' });

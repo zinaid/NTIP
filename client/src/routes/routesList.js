@@ -6,6 +6,7 @@ import Reservations from '../pages/reservations/Reservations'
 import Books from '../pages/books/Books'
 import Body from '../components/body/Body'
 import AddBook from '../pages/books/addBook'
+import AddReservation from '../pages/reservations/addReservation'
 import EditBook from '../pages/books/editBook'
 
 function RoutesList({auth, setAuth}) {
@@ -21,6 +22,7 @@ function RoutesList({auth, setAuth}) {
         <Route path="add-book" element={<AddBook />} />
         <Route path="edit-book/:id" element={<EditBook />} />
         <Route path="reservations" element={<Reservations />} />
+        <Route path="add-reservation" element={<AddReservation />} />
       </Route>
       </Routes>
   );
