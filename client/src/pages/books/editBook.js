@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import Cookies from 'js-cookie';
 
 function EditBook() {
   const { id } = useParams();
@@ -16,7 +17,12 @@ function EditBook() {
     // Fetch the book data based on the ID
     const fetchData = async () => {
       try {
-        const response = await fetch(`http://localhost:3001/api/books/${id}`);
+        const authToken = Cookies.get('authData');
+        const response = await fetch(`http://localhost:3001/api/books/${id}`, {
+          headers: {
+            Authorization: `${authToken}`, // Include the authorization token in the headers
+          },
+        });
         if (!response.ok) {
           throw new Error('Failed to fetch book data');
         }
@@ -36,11 +42,13 @@ function EditBook() {
     e.preventDefault();
 
     try {
+      const authToken = Cookies.get('authData');
       // Make a PUT request to update the book
       const response = await fetch(`http://localhost:3001/api/books/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
+          Authorization: `${authToken}`, // Include the authorization token in the headers
         },
         body: JSON.stringify(editedBook),
       });

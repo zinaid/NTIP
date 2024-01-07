@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import {Link} from 'react-router-dom'
 import Book from './Book'
+import Cookies from 'js-cookie';
 
 function Books() {
     const [books, setBooks] = useState([]);
@@ -9,7 +10,12 @@ function Books() {
         // Function to fetch data
         const fetchData = async () => {
           try {
-            const response = await fetch('http://localhost:3001/api/books');
+            const authToken = Cookies.get('authData');
+            const response = await fetch('http://localhost:3001/api/books', {
+              headers: {
+                Authorization: `${authToken}`, // Include the authorization token in the headers
+              },
+            });
             if (!response.ok) {
               throw new Error('Failed to fetch data');
             }
@@ -27,9 +33,13 @@ function Books() {
 
       const handleDelete = async (id) => {
         try {
+          const authToken = Cookies.get('authData');
           // Make a DELETE request to the API
           const response = await fetch(`http://localhost:3001/api/books/${id}`, {
             method: 'DELETE',
+            headers: {
+              Authorization: `${authToken}`, // Include the authorization token in the headers
+            },
           });
     
           if (!response.ok) {

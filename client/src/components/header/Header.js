@@ -1,10 +1,12 @@
 import {Link, useNavigate} from 'react-router-dom';
+import Cookies from 'js-cookie';
 
 function Header({auth, setAuth}) {
   const navigate = useNavigate();
 
   const handleLogout = () => {
     setAuth(false);
+    Cookies.remove('authData');
     navigate('/login');
   };
 
@@ -13,8 +15,14 @@ function Header({auth, setAuth}) {
       <div className="flex flex-row mx-auto">
         <Link to="/" className="text-white text-2xl font-bold w-full">NTIP</Link>
         <div>
-          <Link to="/books" className="text-white w-full mr-2">Knjige</Link>
-          <Link to="/reservations" className="text-white w-full">Rezervacije</Link>
+          {auth ? (
+            <>
+              <Link to="/books" className="text-white w-full mr-2">Knjige</Link>
+              <Link to="/reservations" className="text-white w-full">Rezervacije</Link>
+            </>
+          ):(
+            <></>
+          )}
         </div>
         <div className="flex justify-end font-bold text-white w-full">
           {!auth ? (

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import Cookies from 'js-cookie';
 
 function AddBook() {
   const [newBook, setNewBook] = useState({
@@ -15,10 +16,12 @@ function AddBook() {
 
     try {
       // Make a POST request to add the new book
+      const authToken = Cookies.get('authData');
       const response = await fetch('http://localhost:3001/api/books', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          Authorization: `${authToken}`, // Include the authorization token in the headers
         },
         body: JSON.stringify(newBook),
       });
