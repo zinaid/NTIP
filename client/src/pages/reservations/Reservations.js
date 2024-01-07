@@ -41,7 +41,7 @@ function Reservations() {
       <ul>
         {reservations.map((reservation) => (
           <li key={reservation.id}>
-            User ID: {reservation.user_id}, Book ID: {reservation.book_id}, Date: {reservation.reservation_date}
+            User ID: {reservation.user_id}, Book Title: {reservation.title}, Date: {reservation.reservation_date}
           </li>
         ))}
       </ul>

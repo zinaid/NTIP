@@ -2,7 +2,7 @@ const db = require('../db/database');
 
 class Reservation {
   static getAllReservations(callback) {
-    db.all('SELECT * FROM reservations', callback);
+    db.all('SELECT reservations.*, books.title  FROM reservations INNER JOIN books ON reservations.book_id = books.id', callback);
   }
 
   static makeReservation(userId, bookId, callback) {

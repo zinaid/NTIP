@@ -2569,7 +2569,7 @@ const db = require('../db/database');
 
 class Reservation {
   static getAllReservations(callback) {
-    db.all('SELECT * FROM reservations', callback);
+    db.all('SELECT reservations.*, books.title  FROM reservations INNER JOIN books ON reservations.book_id = books.id', callback);
   }
 
   static makeReservation(userId, bookId, callback) {
@@ -2707,7 +2707,7 @@ function Reservations() {
       <ul>
         {reservations.map((reservation) => (
           <li key={reservation.id}>
-            User ID: {reservation.user_id}, Book ID: {reservation.book_id}, Date: {reservation.reservation_date}
+            User ID: {reservation.user_id}, Book Title: {reservation.title}, Date: {reservation.reservation_date}
           </li>
         ))}
       </ul>
