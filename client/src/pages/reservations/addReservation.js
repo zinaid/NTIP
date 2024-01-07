@@ -1,13 +1,39 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Cookies from 'js-cookie';
 
 function AddReservation() {
   const [newReservation, setNewReservation] = useState({
-    book: ''
+    bookId: ''
   });
 
+  const [availableBooks, setAvailableBooks] = useState([]);
+
   const navigate = useNavigate();
+
+  // Fetch available books when the component mounts
+  useEffect(() => {
+    const fetchBooks = async () => {
+      try {
+        const authToken = Cookies.get('authData');
+        const response = await fetch('http://localhost:3001/api/books', {
+            headers: {
+                Authorization: `${authToken}`, // Include the authorization token in the headers
+            }
+        });
+        if (!response.ok) {
+          throw new Error('Failed to fetch available books');
+        }
+
+        const books = await response.json();
+        setAvailableBooks(books);
+      } catch (error) {
+        console.error('Error fetching available books:', error.message);
+      }
+    };
+
+    fetchBooks();
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -41,14 +67,22 @@ function AddReservation() {
 
       <form onSubmit={handleSubmit} className='flex flex-col p-4'>
         <label>Knjiga:</label>
-        <input
-          type="text"
-          name="book"
-          value={newReservation.book}
-          onChange={(e) => setNewReservation({ ...newReservation, book: e.target.value })}
+        <select
+          name="bookId"
+          value={newReservation.bookId}
+          onChange={(e) => setNewReservation({ ...newReservation, bookId: e.target.value })}
           required
           className="border p-2 mb-2"
-        />
+        >
+          <option value="" disabled>
+            Odaberi knjigu
+          </option>
+          {availableBooks.map((book) => (
+            <option key={book.id} value={book.id}>
+              {book.title}
+            </option>
+          ))}
+        </select>
 
         <button type="submit" className="bg-green-500 text-white p-2">
           Dodaj

@@ -2722,55 +2722,98 @@ This is our add reservation.
 
 ```js
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Cookies from 'js-cookie';
-import {Link} from 'react-router-dom'
 
-function Reservations() {
-  const [reservations, setReservations] = useState([]);
+function AddReservation() {
+  const [newReservation, setNewReservation] = useState({
+    bookId: ''
+  });
 
+  const [availableBooks, setAvailableBooks] = useState([]);
+
+  const navigate = useNavigate();
+
+  // Fetch available books when the component mounts
   useEffect(() => {
-    // Function to fetch reservations
-    const fetchReservations = async () => {
+    const fetchBooks = async () => {
       try {
         const authToken = Cookies.get('authData');
-        const response = await fetch('http://localhost:3001/api/reservations', {
-          headers: {
-            Authorization: `${authToken}`, // Include the authorization token in the headers
-          }
+        const response = await fetch('http://localhost:3001/api/books', {
+            headers: {
+                Authorization: `${authToken}`, // Include the authorization token in the headers
+            }
         });
         if (!response.ok) {
-          throw new Error('Failed to fetch reservations');
+          throw new Error('Failed to fetch available books');
         }
 
-        const data = await response.json();
-        setReservations(data);
+        const books = await response.json();
+        setAvailableBooks(books);
       } catch (error) {
-        console.error('Error fetching reservations:', error.message);
+        console.error('Error fetching available books:', error.message);
       }
     };
 
-    // Call the fetch reservations function
-    fetchReservations();
-  }, []); // Empty dependency array means this effect runs once after the initial render
+    fetchBooks();
+  }, []);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    try {
+      // Make a POST request to add the new Reservation
+      const authToken = Cookies.get('authData');
+      const response = await fetch('http://localhost:3001/api/reservations', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+           Authorization: `${authToken}`, // Include the authorization token in the headers
+        },
+        body: JSON.stringify(newReservation),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to add the new Reservation');
+      }
+
+      navigate('/Reservations');
+
+    } catch (error) {
+      console.error('Error adding Reservation:', error.message);
+    }
+  };
 
   return (
     <div className="container mx-auto mt-8">
-      <div className='flex w-full justify-between'>
-        <h1 className="text-3xl font-bold mb-4">Lista rezervacija</h1>
-        <Link to="/add-reservation" className="bg-blue-500 text-white p-2 mb-4">
-          Dodaj rezervaciju
-        </Link>
-      </div>
-      <ul>
-        {reservations.map((reservation) => (
-          <li key={reservation.id}>
-            User ID: {reservation.user_id}, Book ID: {reservation.book_id}, Date: {reservation.reservation_date}
-          </li>
-        ))}
-      </ul>
+      <h1 className="text-3xl font-bold mb-4">Dodaj rezervaciju</h1>
+
+      <form onSubmit={handleSubmit} className='flex flex-col p-4'>
+        <label>Knjiga:</label>
+        <select
+          name="bookId"
+          value={newReservation.bookId}
+          onChange={(e) => setNewReservation({ ...newReservation, bookId: e.target.value })}
+          required
+          className="border p-2 mb-2"
+        >
+          <option value="" disabled>
+            Odaberi knjigu
+          </option>
+          {availableBooks.map((book) => (
+            <option key={book.id} value={book.id}>
+              {book.title}
+            </option>
+          ))}
+        </select>
+
+        <button type="submit" className="bg-green-500 text-white p-2">
+          Dodaj
+        </button>
+      </form>
     </div>
   );
 }
 
-export default Reservations;
+export default AddReservation;
 ```
