@@ -2216,8 +2216,328 @@ module.exports = router;
 
 Now our application will first check if we have cookie and if we have it will verify that token and then create auth state.
 
-Now that we have login and register. We need to modify our API calls for books and add token so our middleware doesn't stop us from fetching and saving data.
+Now that we have login and register. We need to modify our API calls for books and add token so our middleware doesn't stop us from fetching and saving data. First let add header authorization to get all books and delete books inside Books.js.
 
+```js
+import { useState, useEffect } from 'react';
+import {Link} from 'react-router-dom'
+import Book from './Book'
+import Cookies from 'js-cookie';
+
+function Books() {
+    const [books, setBooks] = useState([]);
+    
+    useEffect(() => {
+        // Function to fetch data
+        const fetchData = async () => {
+          try {
+            const authToken = Cookies.get('authData');
+            const response = await fetch('http://localhost:3001/api/books', {
+              headers: {
+                Authorization: `${authToken}`, // Include the authorization token in the headers
+              },
+            });
+            if (!response.ok) {
+              throw new Error('Failed to fetch data');
+            }
+    
+            const data = await response.json();
+            setBooks(data);
+          } catch (error) {
+            console.error('Error fetching data:', error.message);
+          }
+        };
+    
+        // Call the fetch data function
+        fetchData();
+      }, []); // Empty dependency array means this effect runs once after the initial render>
+
+      const handleDelete = async (id) => {
+        try {
+          // Make a DELETE request to the API
+          const response = await fetch(`http://localhost:3001/api/books/${id}`, {
+            method: 'DELETE',
+          });
+    
+          if (!response.ok) {
+            throw new Error('Failed to delete the book');
+          }
+    
+          // Update the local state without the deleted book
+          setBooks((prevBooks) => prevBooks.filter((book) => book.id !== id));
+        } catch (error) {
+          console.error('Error deleting book:', error.message);
+        }
+      };
+    
+
+    return (
+        <div className="container mx-auto mt-8">
+          <div className='flex w-full justify-between'>
+            <h1 className="text-3xl font-bold mb-4">Lista knjiga</h1>
+            <Link to="/add-book" className="bg-blue-500 text-white p-2 mb-4">
+              Dodaj knjigu
+            </Link>
+          </div>
+        
+        {books.map((book) => (
+            <Book key={book.id} {...book} onDelete={handleDelete}/>
+        ))}
+        </div>
+    );
+}
+  
+export default Books 
 ```
+
+Add the same to the edit and add book.
+
+EditBook
+
+```js
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import Cookies from 'js-cookie';
+
+function EditBook() {
+  const { id } = useParams();
+
+  const [editedBook, setEditedBook] = useState({
+    title: '',
+    author: '',
+    description: '',
+  });
+
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    // Fetch the book data based on the ID
+    const fetchData = async () => {
+      try {
+        const authToken = Cookies.get('authData');
+        const response = await fetch(`http://localhost:3001/api/books/${id}`, {
+          headers: {
+            Authorization: `${authToken}`, // Include the authorization token in the headers
+          },
+        });
+        if (!response.ok) {
+          throw new Error('Failed to fetch book data');
+        }
+
+        const data = await response.json();
+        setEditedBook(data);
+      } catch (error) {
+        console.error('Error fetching book data:', error.message);
+      }
+    };
+
+    // Call the fetch data function
+    fetchData();
+  }, [id]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    try {
+      const authToken = Cookies.get('authData');
+      // Make a PUT request to update the book
+      const response = await fetch(`http://localhost:3001/api/books/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `${authToken}`, // Include the authorization token in the headers
+        },
+        body: JSON.stringify(editedBook),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update the book');
+      }
+
+      // Redirect to the home page after updating the book
+      navigate('/books');
+    } catch (error) {
+      console.error('Error updating book:', error.message);
+    }
+  };
+
+  return (
+    <div className="container mx-auto mt-8">
+      <h1 className="text-3xl font-bold mb-4">Uredi knjigu {id}</h1>
+
+      <form onSubmit={handleSubmit} className='flex flex-col p-4'>
+        <label>Title:</label>
+        <input
+          type="text"
+          name="title"
+          value={editedBook.title}
+          onChange={(e) => setEditedBook({ ...editedBook, title: e.target.value })}
+          required
+          className="border p-2 mb-2"
+        />
+
+        <label>Author:</label>
+        <input
+          type="text"
+          name="author"
+          value={editedBook.author}
+          onChange={(e) => setEditedBook({ ...editedBook, author: e.target.value })}
+          required
+          className="border p-2 mb-2"
+        />
+
+        <label>Description:</label>
+        <textarea
+          name="description"
+          value={editedBook.description}
+          onChange={(e) => setEditedBook({ ...editedBook, description: e.target.value })}
+          required
+          className="border p-2 mb-4"
+        />
+
+        <button type="submit" className="bg-blue-500 text-white p-2">
+         Spremi
+        </button>
+      </form>
+    </div>
+  );
+}
+
+export default EditBook;
 ```
+
+Add book
+
+```js
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import Cookies from 'js-cookie';
+
+function AddBook() {
+  const [newBook, setNewBook] = useState({
+    title: '',
+    author: '',
+    description: '',
+  });
+
+  const navigate = useNavigate();
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    try {
+      // Make a POST request to add the new book
+      const authToken = Cookies.get('authData');
+      const response = await fetch('http://localhost:3001/api/books', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `${authToken}`, // Include the authorization token in the headers
+        },
+        body: JSON.stringify(newBook),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to add the new book');
+      }
+
+      navigate('/books');
+
+    } catch (error) {
+      console.error('Error adding book:', error.message);
+    }
+  };
+
+  return (
+    <div className="container mx-auto mt-8">
+      <h1 className="text-3xl font-bold mb-4">Dodaj knjigu</h1>
+
+      <form onSubmit={handleSubmit} className='flex flex-col p-4'>
+        <label>Naslov:</label>
+        <input
+          type="text"
+          name="title"
+          value={newBook.title}
+          onChange={(e) => setNewBook({ ...newBook, title: e.target.value })}
+          required
+          className="border p-2 mb-2"
+        />
+
+        <label>Autor:</label>
+        <input
+          type="text"
+          name="author"
+          value={newBook.author}
+          onChange={(e) => setNewBook({ ...newBook, author: e.target.value })}
+          required
+          className="border p-2 mb-2"
+        />
+
+        <label>Opis:</label>
+        <textarea
+          name="description"
+          value={newBook.description}
+          onChange={(e) => setNewBook({ ...newBook, description: e.target.value })}
+          required
+          className="border p-2 mb-4"
+        />
+
+        <button type="submit" className="bg-green-500 text-white p-2">
+          Dodaj
+        </button>
+      </form>
+    </div>
+  );
+}
+
+export default AddBook;
+```
+
+Next we will clean our Header to not show "Knjige" and "Rezervacije" if we are not logged in. Also on logout we want to delete cookie. That is done inside 
+
+```js
+import {Link, useNavigate} from 'react-router-dom';
+import Cookies from 'js-cookie';
+
+function Header({auth, setAuth}) {
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    setAuth(false);
+    Cookies.remove('authData');
+    navigate('/login');
+  };
+
+  return (
+    <header className="bg-blue-500 p-4">
+      <div className="flex flex-row mx-auto">
+        <Link to="/" className="text-white text-2xl font-bold w-full">NTIP</Link>
+        <div>
+          {auth ? (
+            <>
+              <Link to="/books" className="text-white w-full mr-2">Knjige</Link>
+              <Link to="/reservations" className="text-white w-full">Rezervacije</Link>
+            </>
+          ):(
+            <></>
+          )}
+        </div>
+        <div className="flex justify-end font-bold text-white w-full">
+          {!auth ? (
+          <>
+          <Link to="/login" className="mr-2">Login</Link>
+          <Link to="/register">Register</Link>
+          </>) : (
+            <Link to="/logout" onClick={handleLogout} className="mr-2">Logout</Link>
+          )}
+        </div>
+      </div>
+    </header>
+  );
+}
+
+export default Header;
+```
+
+Now we have fully functioning auth on both frontend and backend. With API authentication also.
 
