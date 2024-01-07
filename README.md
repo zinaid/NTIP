@@ -2541,3 +2541,91 @@ export default Header;
 
 Now we have fully functioning auth on both frontend and backend. With API authentication also.
 
+### RESERVATIONS
+
+We will create a simple API's for adding and retrieving reservations for books. Let us start with a migration. Inside db schemes create reservationScheme.js.
+
+```js
+const db = require('../database');
+
+db.run(`
+    CREATE TABLE IF NOT EXISTS reservations (
+        id INTEGER PRIMARY KEY,
+        user_id INTEGER,
+        book_id INTEGER,
+        reservation_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id),
+        FOREIGN KEY (book_id) REFERENCES books(id)
+    )
+`);
+
+db.close();
+```
+
+Next inside models create reservationModel.
+
+```js
+const db = require('../db/database');
+
+class Reservation {
+  static getAllReservations(callback) {
+    db.all('SELECT * FROM reservations', callback);
+  }
+
+  static makeReservation(userId, bookId, callback) {
+    db.run('INSERT INTO reservations (user_id, book_id) VALUES (?, ?)', [userId, bookId], callback);
+  }
+}
+
+module.exports = Reservation;
+```
+
+Next create controller for reservations.
+
+```js
+const Reservation = require('../models/Reservation');
+
+const reservationController = {
+  getAllReservations: (req, res) => {
+    Reservation.getAllReservations((err, reservations) => {
+      if (err) {
+        return res.status(500).json({ error: 'Error fetching reservations.' });
+      }
+      res.status(200).json(reservations);
+    });
+  },
+
+  makeReservation: (req, res) => {
+    const { userId, bookId } = req.body;
+
+    Reservation.makeReservation(userId, bookId, (err) => {
+      if (err) {
+        return res.status(500).json({ error: 'Error making reservation.' });
+      }
+      res.status(201).json({ message: 'Reservation made successfully.' });
+    });
+  },
+};
+
+module.exports = reservationController;
+```
+
+Then create reservation routes.
+
+```js
+// routes/reservation.js
+const express = require('express');
+const reservationController = require('../controllers/reservationController');
+const authenticateToken = require('../middlewares/authMiddleware');
+
+const router = express.Router();
+
+router.use(authenticateToken); // Apply middleware to all reservation routes
+
+router.get('/', reservationController.getAllReservations);
+router.post('/make-reservation', reservationController.makeReservation);
+
+module.exports = router;
+```
+
+Run migration with a command node/db/schemes/reservationScheme.js from server folder. Now we will continue to add frontend for creating our reservations and printing them.
