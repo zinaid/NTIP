@@ -2149,10 +2149,12 @@ import Footer from './components/footer/Footer';
 import RoutesList from './routes/routesList';
 
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Cookies from 'js-cookie';
 
 function App() {
   const [auth, setAuth] = useState();
+  const navigate = useNavigate();
   useEffect(() => {
     // Function to fetch data
     const verifyToken = async () => {
@@ -2170,16 +2172,18 @@ function App() {
           setAuth(data.token); // Set auth to token
         } catch (error) {
           setAuth(false); // Set auth to false if there is an error or the token is invalid
+          navigate("/login");
         }
       }else{
         console.log("Empty token")
         setAuth(false); 
+        navigate("/login");
       }
     };
 
     // Call the verify token function
     verifyToken();
-  }, []); // Empty dependency array means this effect runs once after the initial render
+  }, [navigate]); // Empty dependency array means this effect runs once after the initial render
   
   return (
     <div className="flex flex-col min-h-screen">
@@ -2817,3 +2821,5 @@ function AddReservation() {
 
 export default AddReservation;
 ```
+
+All of the above can be modified and improved. For example we should add some custom messages after some actions for better user UI. Also we could add some loader to remove flicker effect.
