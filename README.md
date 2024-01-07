@@ -1750,13 +1750,14 @@ const authController = {
   login: (req, res) => {
     const { username, password } = req.body;
     User.login(username, password, (err, user) => {
+
       if (err) {
         return res.status(500).json({ error: 'Error logging in.' });
       }
       if (!user) {
         return res.status(401).json({ error: 'Invalid credentials.' });
       }
-
+      
       // Return a token or other authentication information
       res.json({ user });
     });
@@ -1764,6 +1765,7 @@ const authController = {
 };
 
 module.exports = authController;
+
 ```
 
 Then we will create routes for auth inside routes named auth.js.
@@ -1834,57 +1836,57 @@ const jwt = require('jsonwebtoken');
 
 const { SECRET_KEY } = require('../config'); // Your secret key
 
-class User {
-
-    // Helper method to generate a JWT token
-    static generateToken(user) {
+ // Helper method to generate a JWT token
+function generateToken(user) {
     return jwt.sign({ id: user.id, username: user.username }, SECRET_KEY, { expiresIn: '1h' });
-    }
+}
 
+class User {
     static register(user, callback) {
-    const { username, password } = user;
-
-    bcrypt.hash(password, 10, (err, hashedPassword) => {
-        if (err) {
-        return callback(err);
-        }
-
-        // Use an arrow function to ensure the correct 'this' context
-        db.run('INSERT INTO users (username, password) VALUES (?, ?)', [username, hashedPassword], (err) => {
-        if (err) {
+        const { username, password } = user;
+      
+        bcrypt.hash(password, 10, (err, hashedPassword) => {
+          if (err) {
             return callback(err);
-        }
-
-        // Generate and return the JWT token after registration
-        const token = this.generateToken({ id: this.lastID, username });
-        callback(null, { id: this.lastID, username, token });
-        });
-    });
-    }
-
-    static login(username, password, callback) {
-        db.get('SELECT * FROM users WHERE username = ?', [username], (err, user) => {
-        if (err) {
-            return callback(err);
-        }
-        if (!user) {
-            return callback(null, null); // User not found
-        }
-
-        bcrypt.compare(password, user.password, (err, match) => {
+          }
+      
+          // Use an arrow function to ensure the correct 'this' context
+          db.run('INSERT INTO users (username, password) VALUES (?, ?)', [username, hashedPassword], function (err) {
             if (err) {
+              return callback(err);
+            }
+      
+            // Generate and return the JWT token after registration
+            const token = generateToken({ id: this.lastID, username });
+            callback(null, { id: this.lastID, username, token });
+          });
+        });
+      }
+
+      static login(username, password, callback) {
+        db.get('SELECT * FROM users WHERE username = ?', [username], (err, user) => {
+          if (err) {
             return callback(err);
+          }
+          
+          if (!user) {
+            return callback(null, null); // User not found
+          }
+    
+          bcrypt.compare(password, user.password, (err, match) => {
+            if (err) {
+              return callback(err);
             }
             if (!match) {
-            return callback(null, null); // Incorrect password
+              return callback(null, null); // Incorrect password
             }
-
+    
             // Passwords match, generate and return the JWT token
-            const token = this.generateToken(user);
+            const token = generateToken(user);
             callback(null, { id: user.id, username, token });
+          });
         });
-        });
-    }
+      }
 
     static getById(id, callback) {
         db.get('SELECT id, username FROM users WHERE id = ?', [id], callback);
@@ -1902,6 +1904,7 @@ class User {
 }
 
 module.exports = User;
+
 ```
 
 We will now create a middleware to protect our books routes also. So create a folder named middlewares.
@@ -1996,9 +1999,9 @@ function Register() {
         if (!response.ok) {
           throw new Error('Failed to register user');
         }
-
-        navigate('/books');
         
+        navigate('/login');
+                
       } catch (error) {
         console.error('Error registering user:', error.message);
       }
@@ -2047,5 +2050,174 @@ function Register() {
   }
 
   export default Register;
+```
+
+After we are successfully registred we are moved to Login. Now we need to implement Login frontend function to call our api for login and after success we want to store user info inside a cookie.
+
+```js
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+
+function Login({ setAuth }) {
+  const navigate = useNavigate();
+  const [formData, setFormData] = useState({
+    username: '',
+    password: '',
+  });
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prevData) => ({
+      ...prevData,
+      [name]: value,
+    }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    try {
+      const response = await fetch('http://localhost:3001/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      });
+
+      if (!response.ok) {
+        throw new Error('Login failed');
+      }
+
+      const data = await response.json();
+      const token = data.user.token;
+      console.log(token)
+
+      // create cookie
+      document.cookie = `authData=${JSON.stringify(data.user)}; path=/;`;
+      setAuth(data.user)
+      navigate('/');
+    } catch (error) {
+      console.error('Login failed:', error.message);
+    }
+  };
+
+  return (
+    <div className="flex flex-col justify-center items-center p-4 min-w-[600px]">
+      <h1 className="text-2xl">LOGIN</h1>
+      <form onSubmit={handleSubmit} id="login_form" className="w-full">
+        <div className="p-2 flex flex-col">
+          <label className="text-gray-500">Username</label>
+          <input
+            className="border-2 bg-gray-100"
+            name="username"
+            placeholder="Username"
+            type="text"
+            value={formData.username}
+            onChange={handleChange}
+          />
+        </div>
+        <div className="p-2 flex flex-col">
+          <label className="text-gray-500">Password</label>
+          <input
+            className="border-2 bg-gray-100"
+            name="password"
+            placeholder="Password"
+            type="password"
+            value={formData.password}
+            onChange={handleChange}
+          />
+        </div>
+        <div className="p-2 flex flex-col">
+          <button type="submit" className="w-full bg-green-500 text-white text-xl p-2">
+            Login
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+export default Login;
+```
+
+Next we will modify our App.js to not set auth state to false at initial start. We will check if there is a cookie and if there is a cookie we will set user to logged. Install ```npm install js-cookie``` inside client. We need to create another backend route in our auth to verify-token we recieved from cookie.
+
+```js
+import Header from './components/header/Header';
+import Footer from './components/footer/Footer';
+import RoutesList from './routes/routesList';
+
+import { useState, useEffect } from 'react';
+import Cookies from 'js-cookie';
+
+function App() {
+  const [auth, setAuth] = useState();
+  useEffect(() => {
+    // Function to fetch data
+    const verifyToken = async () => {
+      const authToken = Cookies.get('authData');
+      if(authToken){
+        try {
+          const response = await fetch('http://localhost:3001/api/auth/verify-token', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `${authToken}`,
+            },
+          });
+          const data = await response.json();
+          setAuth(data.token); // Set auth to token
+        } catch (error) {
+          setAuth(false); // Set auth to false if there is an error or the token is invalid
+        }
+      }else{
+        console.log("Empty token")
+        setAuth(false); 
+      }
+    };
+
+    // Call the verify token function
+    verifyToken();
+  }, []); // Empty dependency array means this effect runs once after the initial render
+  
+  return (
+    <div className="flex flex-col min-h-screen">
+        <Header auth={auth} setAuth={setAuth} />
+        <RoutesList auth={auth} setAuth={setAuth} />
+        <Footer />
+    </div>
+  );
+}
+
+export default App;
+```
+
+As for the backend we will create endpoint in auth routes named verify-token.
+
+```js
+// routes/auth.js
+const express = require('express');
+const { register, login } = require('../controllers/authController');
+const authenticateToken = require('../middlewares/authMiddleware');
+
+const router = express.Router();
+
+router.post('/register', register);
+router.post('/login', login);
+
+router.post('/verify-token', authenticateToken, (req, res) => {
+    const token = req.headers['authorization'];
+    res.json({ message: 'Token is valid', token });
+});
+
+module.exports = router;
+```
+
+Now our application will first check if we have cookie and if we have it will verify that token and then create auth state.
+
+Now that we have login and register. We need to modify our API calls for books and add token so our middleware doesn't stop us from fetching and saving data.
+
+```
 ```
 

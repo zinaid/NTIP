@@ -2,10 +2,38 @@ import Header from './components/header/Header';
 import Footer from './components/footer/Footer';
 import RoutesList from './routes/routesList';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import Cookies from 'js-cookie';
 
 function App() {
-  const [auth, setAuth] = useState(false);
+  const [auth, setAuth] = useState();
+  useEffect(() => {
+    // Function to fetch data
+    const verifyToken = async () => {
+      const authToken = Cookies.get('authData');
+      if(authToken){
+        try {
+          const response = await fetch('http://localhost:3001/api/auth/verify-token', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `${authToken}`,
+            },
+          });
+          const data = await response.json();
+          setAuth(data.token); // Set auth to token
+        } catch (error) {
+          setAuth(false); // Set auth to false if there is an error or the token is invalid
+        }
+      }else{
+        console.log("Empty token")
+        setAuth(false); 
+      }
+    };
+
+    // Call the verify token function
+    verifyToken();
+  }, []); // Empty dependency array means this effect runs once after the initial render
   
   return (
     <div className="flex flex-col min-h-screen">

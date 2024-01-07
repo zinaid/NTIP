@@ -28,8 +28,8 @@ function Register() {
           throw new Error('Failed to register user');
         }
 
-        navigate('/books');
-        
+        navigate('/login');
+                
       } catch (error) {
         console.error('Error registering user:', error.message);
       }
