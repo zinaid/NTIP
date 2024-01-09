@@ -31,7 +31,6 @@ function App() {
       }else{
         console.log("Empty token")
         setAuth(false); 
-        navigate("/login");
       }
     };
 
