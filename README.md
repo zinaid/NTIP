@@ -2091,10 +2091,9 @@ function Login({ setAuth }) {
 
       const data = await response.json();
       const token = data.user.token;
-      console.log(token)
 
       // create cookie
-      document.cookie = `authData=${JSON.stringify(data.user)}; path=/;`;
+      document.cookie = `authData=${JSON.stringify(token)}; path=/;`;
       setAuth(data.user)
       navigate('/');
     } catch (error) {
