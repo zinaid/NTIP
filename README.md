@@ -1686,29 +1686,30 @@ class User {
         });
       }
 
-    static login(username, password, callback) {
+      static login(username, password, callback) {
         db.get('SELECT * FROM users WHERE username = ?', [username], (err, user) => {
-        if (err) {
+          if (err) {
             return callback(err);
-        }
-        if (!user) {
+          }
+          
+          if (!user) {
             return callback(null, null); // User not found
-        }
-
-        bcrypt.compare(password, user.password, (err, match) => {
+          }
+    
+          bcrypt.compare(password, user.password, (err, match) => {
             if (err) {
-            return callback(err);
+              return callback(err);
             }
             if (!match) {
-            return callback(null, null); // Incorrect password
+              return callback(null, null); // Incorrect password
             }
-
+    
             // Passwords match, generate and return the JWT token
-            const token = this.generateToken(user);
+            const token = generateToken(user);
             callback(null, { id: user.id, username, token });
+          });
         });
-        });
-    }
+      }
 
     static getById(id, callback) {
         db.get('SELECT id, username FROM users WHERE id = ?', [id], callback);
@@ -1726,7 +1727,6 @@ class User {
 }
 
 module.exports = User;
-
 ```
 
 Now we will create controller inside controller named authController.js.
