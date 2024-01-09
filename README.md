@@ -1796,7 +1796,6 @@ const app = express();
 const port = 3001;
 
 const bookRoutes = require('./routes/books');
-const reservationRoutes = require('./routes/reservations');
 const authRoutes = require('./routes/auth');
 
 app.use(express.json());
